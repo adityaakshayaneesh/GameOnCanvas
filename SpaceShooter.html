@@ -1,0 +1,318 @@
+<html>
+<head>
+<title>Dev2</title>
+<style>
+canvas{
+	background-color:black;
+}
+
+#back-button{
+	text-decoration: none;
+	background-color: black;
+	color: white;
+	border: 1px solid black;
+}
+
+</style>
+</head>
+<!--<h1 id = "clicktostart">CLICK ANYWHERE TO START</h1>-->
+
+<body onload="startGame()">
+<script>
+var myBlackPiece;
+var obstacle = [];
+var obstacle2 = [];
+var myBullet;
+var score = 0;
+var miss = 0;
+var count = 0;
+var countBullet = 0;
+var direction = 0; //DOWN
+function startGame(){
+	//var clickstart = document.getElementById("clicktostart");
+	//document.body.removeChild(clickstart);
+	myBullet = new component(10, 30, "yellow", 300, 600);
+	myBlackPiece = new component(50,70,"yellow",300,530);
+	gameComponent = new component(0, 600, "white",-100,0);
+	myGameArea.start(); //calls start function 
+}
+
+//components used in my gaming area(object constructor)
+function component(width, height, color, x, y){
+	this.width=width;
+	this.height=height;
+	this.x=x;
+	this.y=y;
+	this.speedX = 0;
+	this.speedY = 0;
+	this.update = function(){
+		ctx = myGameArea.context; 
+		//myGameArea has a variable called context
+		ctx.fillStyle=color;
+		ctx.fillRect(this.x, this.y, this.width, this.height);
+	}
+	this.newPos = function(){
+		this.x += this.speedX;
+		this.y += this.speedY;
+	}
+	this.crashWith = function(otherobj){
+		var myleft = this.x;
+        var myright = this.x + (this.width);
+        var mytop = this.y;
+        var mybottom = this.y + (this.height);
+        var otherleft = otherobj.x;
+        var otherright = otherobj.x + (otherobj.width);
+        var othertop = otherobj.y;
+        var otherbottom = otherobj.y + (otherobj.height);
+        var crash = true;
+        if ((mybottom < othertop) ||
+               (mytop > otherbottom) ||
+               (myright < otherleft) ||
+               (myleft > otherright)) {
+           crash = false;
+        }
+        return crash;
+    }
+	this.disappearBulletOne = function(){
+			this.x = 1000;
+			this.y = -1000;
+	}
+	this.disappearBulletTwo = function(){
+			this.x = 4000;
+			this.y = -1000;
+	}
+	this.disappearObstacle = function(){
+			this.x = 1500; 
+			this.y = -1000;
+	}
+	this.disappearMiss = function(){
+		this.x = 6000;
+		this.y = -1000;
+	}
+}
+
+//my gaming area (object literal spanning multiple lines) 
+var myGameArea = {
+//canvas - object, with methods and properties for drawing
+	canvas : document.createElement("canvas"),
+	start : function(){
+		(this.canvas).width = 600;
+		(this.canvas).height= 600;
+		(this.context) = this.canvas.getContext("2d");
+		(this.frameNo) = 0;
+		//context is a variable in the object literal
+		document.body.insertBefore(this.canvas, document.body.childNodes[0]);
+		//canvas should be the first child node of the body element
+		(this.interval) = setInterval(updateGameArea,10);
+		//interval is a variable in the object literal
+		//calls the function updateGameArea() every ()milliseconds
+		
+		window.addEventListener('keydown', function(e){
+			myGameArea.key = e.keyCode;
+			})
+		window.addEventListener('keyup', function(e){
+			myGameArea.key = false;
+			})
+		},
+	clear : function(){
+		this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+		//clears the canvas of the area mentioned in the paramters
+	},
+	
+	stop : function(){
+		myGameArea.clear();
+		ctx.font = "25px Verdana";
+		ctx.fillStyle = "white";
+		ctx.fillText("GAME OVER", 250,250);
+		ctx.fillText("SCORE: "+score, 250,300);
+		ctx.fillText("CLICK ANYWHERE TO PLAY AGAIN", 100,350);
+		
+		function reloadGame(){
+			window.location.reload();
+		}
+		myGameArea.canvas.addEventListener("click",reloadGame);
+	}
+	
+}
+
+function everyinterval(n){
+	if((myGameArea.frameNo/n) % 1 == 0){
+		return true;
+	}
+	return false;
+}
+
+function updateGameArea(){
+	var x, y;
+	//-----------CRASHWITH OBSTACLE-----------------
+	for (i = 0; i < obstacle.length; i += 1) {
+		if (myBullet.crashWith(obstacle[i])) {
+			myBullet.disappearBulletOne();
+			obstacle[i].disappearObstacle();
+			score+=2;
+			//myGameArea.stop();
+		}
+		if(obstacle[i].crashWith(gameComponent)){
+				obstacle[i].disappearMiss();
+				miss++;
+			}
+    }
+	for (j = 0; j < obstacle2.length; j += 1) {
+		if (myBullet.crashWith(obstacle2[j])) {
+			myBullet.disappearBulletTwo();
+			obstacle2[j].disappearObstacle();
+			if(score>=5)
+				score += 5;
+			else
+				score += 1;
+			
+			//myGameArea.stop();
+		}
+		if(obstacle2[j].crashWith(gameComponent)){
+				obstacle2[j].disappearMiss();
+				miss++;
+			}
+    }
+	//-----------------------------------------------
+	
+	myGameArea.clear();
+	
+	myBlackPiece.speedX = 0;
+	//----------GUN BOUNDS & KEYBOARD CONTROLS-------------
+	if(myGameArea.key && myGameArea.key == 37){
+		myBlackPiece.speedX = -5;
+		if(myBlackPiece.x < 0)
+			myBlackPiece.speedX = 0;
+	}
+	if(myGameArea.key && myGameArea.key == 39){
+		myBlackPiece.speedX = 5   ;
+		if(myBlackPiece.x > 600-myBlackPiece.width)
+			myBlackPiece.speedX = 0;
+	}
+	if(myGameArea.key && myGameArea.key == 32)
+		shoot();
+	//------------------------------------------------------
+	
+	//--------------------OBSTACLES-------------------
+	myGameArea.frameNo += 1;
+    if (myGameArea.frameNo == 1 || everyinterval(670)){
+        x = myGameArea.canvas.width;
+        y = parseInt(Math.random() * (myGameArea.canvas.height - 200));
+		if(score>=3)
+			obstacle.push(new component(100, 20, "blue", x, y));
+    }
+	
+	if (myGameArea.frameNo == 1 || everyinterval(500)){
+        x = myGameArea.canvas.width;
+        y = parseInt(Math.random() * (myGameArea.canvas.height - 200));
+		red_width = 25 + parseInt(Math.random()* (100 - 25 + 1))
+		if(score>=5)
+			obstacle2.push(new component(red_width, 20, "red", x, y));
+		else 
+			obstacle2.push(new component(100, 20, "red", x, y));
+    }
+	
+    for (i = 0; i < obstacle.length; i += 1) {
+		/*if(score>25){
+			obstacle[i].x -= 3;
+			obstacle[i].update();
+		}*/
+        obstacle[i].x -= 2;
+        obstacle[i].update();
+    }
+	for (j = 0; j < obstacle2.length; j += 1) {
+		/*if(score>25){
+			obstacle2[j].x -= 2;
+			obstacle2[j].update();
+		}*/
+		if(score>=10){
+			if(obstacle2[j].y == 400){
+				direction = 1;
+				obstacle2[j].y -= 1;
+				obstacle2[j].x -= 1;
+				obstacle2[j].update();
+			}
+			else if(obstacle2[j].y == 0){
+				direction = 0;
+				obstacle2[j].y += 1;
+				obstacle2[j].x -= 1;
+				obstacle2[j].update();
+			}
+			else
+			{
+				if(direction == 0){
+				obstacle2[j].y += 1;
+				obstacle2[j].x -= 1;
+				obstacle2[j].update();
+				}
+				else if(direction == 1){
+				obstacle2[j].y -= 1;
+				obstacle2[j].x -= 1;
+				obstacle2[j].update();
+				}
+			}
+		}
+		obstacle2[j].x -= 1;
+        obstacle2[j].update();
+    }
+	
+	/*for (j = 0; j < obstacle2.length; j += 1) {
+		obstacle2[j].x -= 1;
+        obstacle2[j].update();
+		if(score>=1){
+			obstacle2[j].y += 1;
+			obstacle2[j].update();
+			if(obstacle2[j].y == 400){
+				obstacle2[j].y -= 1;
+				obstacle2[j].update();
+			}
+			if(obstacle2[j].y == 0){
+				obstacle2[j].y += 1;
+				obstacle2[j].update();
+			}
+		}
+		
+	}*/
+	
+	//-----------------------------------------------------------
+	myBlackPiece.newPos();
+	myBlackPiece.update();
+	if(myBullet.y != 600){
+		myBullet.y -= 5;
+	}
+	myBullet.update();
+	
+	ctx.font = "25px Verdana ";
+	ctx.fillStyle = "white";
+	ctx.fillText("Score: "+score+" Miss: "+miss, 300, 40);	
+	//END GAME WHEN YOU MISS
+	if(miss>=5)
+		myGameArea.stop();
+	gameComponent.update();
+}
+
+function shoot(){
+	if(countBullet == 0){
+		myBullet = new component(10,30,"yellow",myBlackPiece.x+20, myBlackPiece.y-30);
+		countBullet += 1;
+	}
+	if(myBullet.y < 0){
+		myBullet = new component(10,30,"yellow",myBlackPiece.x+20, myBlackPiece.y-30);
+	}
+}
+function stopMove(){
+	myBlackPiece.speedX = 0;
+	myBlackPiece.speedY = 0;
+}
+
+
+</script><br>
+<a href="homepage.php" id="back-button">Back</a>
+<!--<br />
+<button onmousedown="left()" onmouseup="stopMove()">LEFT</button>
+<button onmousedown="right()" onmouseup="stopMove()">RIGHT</button>
+<button onmousedown="shoot()" onmouseup="stopMove()">SHOOT</button>
+-->
+</body>
+</html>
+
